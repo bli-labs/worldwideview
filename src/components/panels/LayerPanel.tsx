@@ -18,7 +18,6 @@ import { useResizablePanel } from "@/core/hooks/useResizablePanel";
 import { pluginManager } from "@/core/plugins/PluginManager";
 import { setLayerActive } from "@/core/plugins/layerActivation";
 import { ImportPanel } from "@/plugins/geojson/ImportPanel";
-import { DiscordIcon } from "@/components/common/DiscordIcon";
 import { trackEvent } from "@/lib/analytics";
 import { ImageryPicker } from "./ImageryPicker";
 import { LayerItem } from "./LayerItem";
@@ -248,17 +247,6 @@ export function LayerPanel() {
                 </div>
                         ))}
             </div>
-            <a
-              href="https://discord.gg/k3F2N4eKnr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="discord-sidebar-link"
-              onClick={() => trackEvent("discord-link-click")}
-              style={{width: "100%", height: "42px"}}
-            >
-              <DiscordIcon size={18} />
-              <span>Join our Discord</span>
-            </a>
           </div>
             )}
 

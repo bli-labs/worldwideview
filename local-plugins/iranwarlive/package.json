@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-iranwarlive",
+  "version": "2.0.0",
+  "description": "Live OSINT tracking — Data sourced from IranWarLive.com (Not for Life-Safety)",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "iranwarlive",
+    "type": "data-layer",
+    "category": "conflict",
+    "icon": "ShieldAlert",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

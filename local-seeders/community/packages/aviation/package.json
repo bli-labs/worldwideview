@@ -1,0 +1,11 @@
+{
+  "name": "@wwv-seeders/aviation",
+  "version": "1.0.0",
+  "main": "dist/index.mjs",
+  "scripts": {
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@worldwideview/seeder-sdk": "^1.0.0"
+  }
+}

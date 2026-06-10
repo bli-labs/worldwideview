@@ -35,7 +35,10 @@ export function BootOverlay({ visible }: BootOverlayProps) {
         </div>
 
         {/* Brand + status */}
-        <div className="boot-overlay__title">WorldWideView</div>
+        <div className="boot-overlay__title">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo/spatialcore-white.svg" alt="SpatialCore" style={{ height: 28, objectFit: "contain" }} />
+        </div>
         <div className="boot-overlay__status">Initializing Systems...</div>
       </div>
     );

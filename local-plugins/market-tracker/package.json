@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-market-tracker",
+  "version": "2.0.0",
+  "description": "Real-time stock and market index tracker (first-party, local engine).",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "market-tracker",
+    "type": "data-layer",
+    "category": "economic",
+    "icon": "TrendingUp",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

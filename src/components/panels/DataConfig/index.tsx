@@ -9,7 +9,7 @@
 import { useStore } from "@/core/state/store";
 import { FilterSection } from "@/components/panels/FilterPanel";
 import {
- Cog, FilterIcon, Info, Key, MessageSquare
+ Cog, FilterIcon, Info, Key
 } from "lucide-react";
 import { useIsMobile } from "@/core/hooks/useIsMobile";
 import { useResizablePanel } from "@/core/hooks/useResizablePanel";
@@ -32,7 +32,6 @@ export function DataConfigPanel() {
     const configPanelOpen = useStore((s) => s.configPanelOpen);
     const openMobilePanel = useStore((s) => s.openMobilePanel);
     const selectedEntity = useStore((s) => s.selectedEntity);
-    const setFeedbackDialogOpen = useStore((s) => s.setFeedbackDialogOpen);
     const activeTab = useStore((s) => s.activeConfigTab);
     const setActiveTab = useStore((s) => s.setActiveConfigTab);
 
@@ -121,14 +120,6 @@ export function DataConfigPanel() {
           {activeTab === "overlay" && <OverlayTab />}
         </div>
 
-        <button
-          className="feedback-sidebar-link"
-          onClick={() => setFeedbackDialogOpen(true)}
-          style={{width: "100%", height: "42px"}}
-        >
-          <MessageSquare size={16} />
-          Provide Feedback
-        </button>
       </aside>
     );
 }

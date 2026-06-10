@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-civil-unrest",
+  "version": "2.0.0",
+  "description": "Tracks global protests, riots, and civil disturbances via GDELT.",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "civil-unrest",
+    "type": "data-layer",
+    "category": "conflict",
+    "icon": "Hand",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

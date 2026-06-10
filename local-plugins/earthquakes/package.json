@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-earthquakes",
+  "version": "2.0.0",
+  "description": "Recent seismic activity from USGS",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "earthquakes",
+    "type": "data-layer",
+    "category": "natural-disaster",
+    "icon": "Activity",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

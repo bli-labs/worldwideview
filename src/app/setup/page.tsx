@@ -30,7 +30,7 @@ export default function SetupPage() {
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.logo}>W</div>
-          <h1 className={styles.title}>Welcome to WorldWideView</h1>
+          <h1 className={styles.title}>Welcome to SpatialCore</h1>
           <p className={styles.subtitle}>Create your admin account to get started</p>
 
           <form onSubmit={handleSubmit} className={styles.form}>

@@ -106,10 +106,9 @@ packages/*/dist/
 /local-scripts/
 /public/plugins-local/
 
-# Local plugin development (gitignored workspace)
-local-plugins/*
-!local-plugins/.gitkeep
-!local-plugins/README.md
+# Local plugins are versioned (first-party plugin workspace) — build artifacts excluded
+local-plugins/*/dist/
+local-plugins/*/node_modules/
 
 # git worktrees
 /.worktrees/
@@ -137,8 +136,11 @@ delete-dups.js
 commit.json
 skills-lock.json
 
-# Seeder repositories
-/local-seeders/
+# Seeders are versioned (first-party seeder workspace) — installs and secrets excluded
+local-seeders/**/node_modules/
+local-seeders/**/credentials.json
+local-seeders/**/.pnpm-store/
+local-seeders/.pnpm-store/
 /.local-seeders-dist/
 
 # WorldwideView Ecosystem Repositories (Development Structure)

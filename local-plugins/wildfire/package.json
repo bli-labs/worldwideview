@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-wildfire",
+  "version": "2.0.0",
+  "description": "Active fire detection via NASA FIRMS (VIIRS)",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "wildfire",
+    "type": "data-layer",
+    "category": "natural-disaster",
+    "icon": "Flame",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

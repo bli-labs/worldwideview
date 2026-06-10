@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-cyber-attacks",
+  "version": "2.0.0",
+  "description": "Active threat campaigns from AlienVault Open Threat Exchange (first-party, local engine).",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "cyber-attacks",
+    "type": "data-layer",
+    "category": "cyber",
+    "icon": "ShieldAlert",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

@@ -1,4 +1,5 @@
 import { pluginManager } from "@/core/plugins/PluginManager";
+import { useStore } from "@/core/state/store";
 import type { AnimatableItem } from "./EntityRenderer";
 
 /** Calculate dynamic grid size based on camera altitude. */
@@ -16,6 +17,14 @@ export function coordKey(pluginId: string, lat: number, lon: number, gridSizeDeg
 /** Compute candidate grouping without mutating state. */
 export function computeGroups(existingMap: Map<string, AnimatableItem>, gridSize: number): Map<string, AnimatableItem[]> {
     const groups = new Map<string, AnimatableItem[]>();
+
+    // Global kill switch — the "Clustering" toggle under Experimental Features.
+    // When off, no grouping happens at all (rebuildStacks then dissolves any
+    // existing stacks on its next pass).
+    if (!useStore.getState().dataConfig.experimentalFeatures.clusteringEnabled) {
+        return groups;
+    }
+
     const clusterDisabledCache = new Map<string, boolean>();
 
     for (const item of existingMap.values()) {

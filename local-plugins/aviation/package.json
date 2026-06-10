@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-aviation",
+  "version": "2.0.0",
+  "description": "Real-time aircraft tracking via OpenSky Network (first-party, local engine).",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "aviation",
+    "type": "data-layer",
+    "category": "aviation",
+    "icon": "Plane",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

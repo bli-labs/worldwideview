@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-maritime",
+  "version": "2.0.0",
+  "description": "Vessel tracking via AIS feeds",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "maritime",
+    "type": "data-layer",
+    "category": "maritime",
+    "icon": "Ship",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-international-sanctions",
+  "version": "2.0.0",
+  "description": "Countries facing significant international US OFAC sanctions (first-party, local engine).",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "international-sanctions",
+    "type": "data-layer",
+    "category": "economic",
+    "icon": "Scale",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

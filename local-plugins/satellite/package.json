@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-satellite",
+  "version": "2.0.0",
+  "description": "Real-time satellite tracking (ISS, GPS, weather, military)",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "satellite",
+    "type": "data-layer",
+    "category": "infrastructure",
+    "icon": "Satellite",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

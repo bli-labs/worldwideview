@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-surveillance-satellites",
+  "version": "2.0.0",
+  "description": "Active military and reconnaissance satellite tracking",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "surveillance-satellites",
+    "type": "data-layer",
+    "category": "infrastructure",
+    "icon": "Radar",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

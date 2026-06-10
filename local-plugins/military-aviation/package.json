@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-military-aviation",
+  "version": "2.0.0",
+  "description": "Real-time military aircraft tracking via adsb.lol",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "military-aviation",
+    "type": "data-layer",
+    "category": "aviation",
+    "icon": "Shield",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

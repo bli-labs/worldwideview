@@ -66,6 +66,10 @@ services:
       - "${WWV_ENGINE_HOST_PORT:-5000}:5000"
     volumes:
       - ./local-seeders:/app/seeders
+    env_file:
+      # Feed API keys (AISSTREAM_API_KEY, OTX_API_KEY, ACLED_*, ...) for seeders.
+      - path: .env.local
+        required: false
     environment:
       - PORT=5000
       - REDIS_URL=redis://wwv-redis:6379

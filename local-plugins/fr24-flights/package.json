@@ -1,0 +1,13 @@
+{
+  "name": "wwv-plugin-fr24-flights",
+  "version": "2.0.0",
+  "description": "Global air traffic simulated from a one-time Flightradar24 snapshot (2,707 flights). Positions dead-reckoned along each aircraft's track; loops every 2 hours.",
+  "types": "src/index.ts",
+  "worldwideview": {
+    "id": "fr24-flights",
+    "type": "data-layer",
+    "category": "aviation",
+    "icon": "Plane",
+    "capabilities": ["data:own", "network:fetch"]
+  }
+}

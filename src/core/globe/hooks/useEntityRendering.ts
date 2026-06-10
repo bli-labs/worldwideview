@@ -8,6 +8,7 @@ import {
 } from "../EntityRenderer";
 import { createUpdateLoop } from "../AnimationLoop";
 import { rebuildStacks, calculateGridSizeDegrees } from "../StackManager";
+import { useStore } from "@/core/state/store";
 
 export function useEntityRendering(
     viewer: CesiumViewer | null,
@@ -26,6 +27,20 @@ export function useEntityRendering(
 ) {
     // Cached array ref — rebuilt only after renderEntities, not every frame
     const cachedAnimatablesRef = useRef<{ current: AnimatableItem[] }>({ current: [] });
+
+    // React immediately when the Experimental Features "Clustering" toggle flips:
+    // force a stack rebuild so clusters form/dissolve without waiting for the
+    // next camera move or data update.
+    const clusteringEnabled = useStore((s) => s.dataConfig.experimentalFeatures.clusteringEnabled);
+    useEffect(() => {
+        if (!viewer || !isReady || viewer.isDestroyed()) return;
+        const altitude = viewer.camera?.positionCartographic
+            ? Math.max(0, viewer.camera.positionCartographic.height)
+            : 0;
+        rebuildStacks(animatablesMapRef.current, calculateGridSizeDegrees(altitude), true);
+        viewer.scene.requestRender();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [clusteringEnabled]);
 
     // Handle scene settings updates separately to avoid tearing down the animation loop
     useEffect(() => {
