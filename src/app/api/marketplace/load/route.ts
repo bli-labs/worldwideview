@@ -11,6 +11,7 @@ import { getVerifiedPluginIds } from "@/lib/marketplace/registryClient";
 import { isDemo, isDemoAdmin } from "@/core/edition";
 import { auth } from "@/lib/auth";
 import { seedDefaultPlugins } from "@/lib/marketplace/seedDefaultPlugins";
+import { mergeInstalledWithLocal } from "@/lib/marketplace/mergeInstalledWithLocal";
 import * as Sentry from "@sentry/nextjs";
 
 export async function OPTIONS(request: Request) {
@@ -64,7 +65,9 @@ export async function GET(request: Request) {
             console.error("Error scanning local plugins directory:", e);
         }
 
-        const allRecords = [...records, ...localPlugins];
+        // Local sandbox plugins shadow installed records with the same id —
+        // otherwise a stale seeded manifest loads first and wins on the client.
+        const allRecords = mergeInstalledWithLocal(records, localPlugins);
 
         const manifests = allRecords
             .map((r: any): PluginManifest | null => {
