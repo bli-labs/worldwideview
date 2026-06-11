@@ -11,6 +11,9 @@ export default defineConfig({
         setupFiles: ['./src/test/setup.ts'],
         alias: {
             '@': path.resolve(__dirname, './src'),
+            // Match the tsconfig/next.config alias: tests must compile the SDK
+            // from source, not from a possibly stale committed dist/ build.
+            '@worldwideview/wwv-plugin-sdk': path.resolve(__dirname, './packages/wwv-plugin-sdk/src'),
         },
         include: [
             'src/lib/**/*.{test,spec}.{js,ts,jsx,tsx}',

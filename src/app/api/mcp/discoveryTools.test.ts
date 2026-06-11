@@ -115,14 +115,21 @@ describe("list_available_plugins", () => {
     });
 
     it("returns { plugins: [], reason: 'engine_unreachable' } when engine is down (TOOL-05)", async () => {
-        // In the test environment the probe fetch fails, so reason becomes engine_unreachable.
-        mockGetAllSnapshots.mockResolvedValue([]);
+        // Stub the probe fetch to fail: the test must not depend on whether a
+        // real engine happens to be listening on this machine.
+        const savedFetch = global.fetch;
+        global.fetch = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
+        try {
+            mockGetAllSnapshots.mockResolvedValue([]);
 
-        const result = await handlers["list_available_plugins"]({});
-        const parsed = parsedOf(result) as { plugins: unknown[]; reason: string };
+            const result = await handlers["list_available_plugins"]({});
+            const parsed = parsedOf(result) as { plugins: unknown[]; reason: string };
 
-        expect(parsed.plugins).toHaveLength(0);
-        expect(parsed.reason).toBe("engine_unreachable");
+            expect(parsed.plugins).toHaveLength(0);
+            expect(parsed.reason).toBe("engine_unreachable");
+        } finally {
+            global.fetch = savedFetch;
+        }
     });
 });
 

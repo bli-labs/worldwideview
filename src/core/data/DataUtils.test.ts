@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
- describe, it, expect, vi, beforeEach
+ describe, it, expect, vi, beforeEach, afterEach
 } from "vitest";
 import { pluginManager } from "@/core/plugins/PluginManager";
 import { fetchLocalEngineManifest, localEngineHasPlugin, resetManifestCache } from "./engineManifest";
@@ -21,6 +21,10 @@ describe("EngineManifest", () => {
     global.fetch = vi.fn() as any;
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("should fetch manifest from local engine and cache it", async () => {
     (global.fetch as any).mockResolvedValue({
       ok: true,
@@ -37,26 +41,91 @@ describe("EngineManifest", () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("should return null and cache failure if local engine is missing", async () => {
+  it("retries within one probe so a transient boot race still detects the engine", async () => {
+    // Regression: the first attempt aborting during a cold `next dev` boot
+    // used to be cached as "no local engine" for the whole session.
+    vi.useFakeTimers();
+    (global.fetch as any)
+      .mockRejectedValueOnce(new Error("This operation was aborted"))
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({ plugins: ["plugin-a"] }),
+      });
+
+    const promise = fetchLocalEngineManifest();
+    await vi.advanceTimersByTimeAsync(1500); // past one retry delay
+    expect(await promise).toEqual(["plugin-a"]);
+    expect(localEngineHasPlugin("plugin-a")).toBe(true);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("shares one in-flight probe between concurrent callers", async () => {
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({ plugins: ["plugin-a"] }),
+    });
+
+    const [a, b] = await Promise.all([
+      fetchLocalEngineManifest(),
+      fetchLocalEngineManifest(),
+    ]);
+    expect(a).toEqual(["plugin-a"]);
+    expect(b).toEqual(["plugin-a"]);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("cools down after a failed probe, then re-probes instead of failing forever", async () => {
+    vi.useFakeTimers();
     (global.fetch as any).mockRejectedValue(new Error("Connection refused"));
 
-    const plugins = await fetchLocalEngineManifest();
-    expect(plugins).toBeNull();
+    const promise = fetchLocalEngineManifest();
+    await vi.advanceTimersByTimeAsync(3000); // exhaust all retry attempts
+    expect(await promise).toBeNull();
+    expect(global.fetch).toHaveBeenCalledTimes(3);
 
-    // Should not retry fetch
-    await fetchLocalEngineManifest();
+    // Within the cooldown: cached failure, no new fetches.
+    expect(await fetchLocalEngineManifest()).toBeNull();
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+
+    // After the cooldown: probes again (and can now succeed).
+    await vi.advanceTimersByTimeAsync(31_000);
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({ plugins: ["plugin-a"] }),
+    });
+    expect(await fetchLocalEngineManifest()).toEqual(["plugin-a"]);
+  });
+
+  it("kicks a background probe from localEngineHasPlugin when nothing is cached", async () => {
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({ plugins: ["plugin-a"] }),
+    });
+
+    expect(localEngineHasPlugin("plugin-a")).toBe(false); // not detected yet
+    await new Promise(resolve => setTimeout(resolve, 0)); // let the probe settle
+    expect(localEngineHasPlugin("plugin-a")).toBe(true);
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("resolveEngineUrl", () => {
-  beforeEach(() => {
-    resetManifestCache();
+  beforeEach(async () => {
     vi.clearAllMocks();
+    resetManifestCache();
+    // Pre-cache an empty manifest: the engine is "known" with no plugins, so
+    // localEngineHasPlugin answers from cache and never spawns a background
+    // probe that could leak across tests.
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ plugins: [] }),
+    }) as any;
+    await fetchLocalEngineManifest();
   });
 
   it("should prioritize local engine if plugin is found there", async () => {
-    // Setup local manifest
+    // Replace the cached empty manifest with one that has the plugin.
+    resetManifestCache();
     (global.fetch as any).mockResolvedValue({
       ok: true,
       json: async () => ({ plugins: ["plugin-local"] }),

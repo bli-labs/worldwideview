@@ -163,11 +163,18 @@ describe("listStreamingPlugins", () => {
     });
 
     it("returns { plugins: [], reason: 'engine_unreachable' } when no snapshots and engine not reachable (TOOL-05)", async () => {
-        // In the test environment the probe fetch fails, so engineReachable=false -> engine_unreachable.
-        mockGetAllSnapshots.mockResolvedValue([]);
-        const result = await listStreamingPlugins();
-        expect(result.plugins).toHaveLength(0);
-        expect(result.reason).toBe("engine_unreachable");
+        // Stub the probe fetch to fail: the test must not depend on whether a
+        // real engine happens to be listening on this machine.
+        const savedFetch = global.fetch;
+        global.fetch = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
+        try {
+            mockGetAllSnapshots.mockResolvedValue([]);
+            const result = await listStreamingPlugins();
+            expect(result.plugins).toHaveLength(0);
+            expect(result.reason).toBe("engine_unreachable");
+        } finally {
+            global.fetch = savedFetch;
+        }
     });
 
     it("returns no_active_plugins when engine reachable but zero snapshots (TOOL-05)", async () => {
@@ -296,14 +303,21 @@ describe("listStreamingPlugins -- source tagging", () => {
     });
 
     it("engine-unreachable passthrough: empty snapshots returns engine_unreachable when probe fails (TOOL-05)", async () => {
-        // In the test environment the probe fetch fails, so reason becomes engine_unreachable.
-        mockGetAllSnapshots.mockResolvedValue([]);
-        mockGetLocalSourceIds.mockResolvedValue(new Set(["camera"]));
+        // Stub the probe fetch to fail: the test must not depend on whether a
+        // real engine happens to be listening on this machine.
+        const savedFetch = global.fetch;
+        global.fetch = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
+        try {
+            mockGetAllSnapshots.mockResolvedValue([]);
+            mockGetLocalSourceIds.mockResolvedValue(new Set(["camera"]));
 
-        const result = await listStreamingPlugins();
+            const result = await listStreamingPlugins();
 
-        expect(result.plugins).toHaveLength(0);
-        expect(result.reason).toBe("engine_unreachable");
+            expect(result.plugins).toHaveLength(0);
+            expect(result.reason).toBe("engine_unreachable");
+        } finally {
+            global.fetch = savedFetch;
+        }
     });
 });
 
