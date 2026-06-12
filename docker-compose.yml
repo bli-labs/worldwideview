@@ -55,7 +55,10 @@ services:
       start_period: 60s
 
   wwv-data-engine:
-    image: ghcr.io/silvertakana/wwv-data-engine:latest
+    # Our own engine build: github.com/pixelsock/wwv-data-engine, branch
+    # fix/self-healing-cron-scheduler (upstream + self-healing cron scheduler).
+    # Build: docker build -t ghcr.io/bli-labs/wwv-data-engine:latest <clone-dir>
+    image: ghcr.io/bli-labs/wwv-data-engine:latest
     command: >
       sh -c "
       echo 'Syncing workspace dependencies...' &&
