@@ -7,7 +7,7 @@
  * call any per-session plugin tools — all by voice.
  *
  * The orb renders only when the server reports the voice backend is
- * configured (GEMINI_API_KEY present) — and never on demo edition.
+ * configured (OPENAI_API_KEY present) — and never on demo edition.
  */
 
 "use client";
@@ -19,7 +19,7 @@ import { VoiceButton } from "./VoiceButton";
 import { VoiceTranscript } from "./VoiceTranscript";
 
 export function VoiceAgentOverlay() {
-    const { state, transcript, start, stop } = useVoiceAgent();
+    const { state, audioLevel, transcript, start, stop } = useVoiceAgent();
     const [transcriptOpen, setTranscriptOpen] = useState(false);
     const [configured, setConfigured] = useState(false);
 
@@ -55,7 +55,12 @@ export function VoiceAgentOverlay() {
             {transcriptOpen && (
                 <VoiceTranscript entries={transcript} onClose={() => setTranscriptOpen(false)} />
             )}
-            <VoiceButton state={state} onClick={handleStart} onDisconnect={handleStop} />
+            <VoiceButton
+                state={state}
+                audioLevel={audioLevel}
+                onClick={handleStart}
+                onDisconnect={handleStop}
+            />
         </>
     );
 }

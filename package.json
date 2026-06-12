@@ -1,6 +1,6 @@
 {
   "name": "worldwideview",
-  "version": "2.51.2",
+  "version": "2.52.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@9.15.4",
@@ -28,7 +28,6 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
     "@auth/supabase-adapter": "^1.11.2",
-    "@google/genai": "^2.8.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",

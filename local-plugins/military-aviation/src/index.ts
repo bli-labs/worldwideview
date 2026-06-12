@@ -5,9 +5,12 @@
 
 const PLUGIN_ID = "military-aviation";
 
-function engineBase() {
+function engineBase(ctx) {
+  const resolved = ctx?.getEngineUrl?.() ?? ctx?.apiBaseUrl;
+  if (resolved) return resolved.replace(/\/stream$/, "");
   if (typeof window === "undefined") return "http://localhost:5000";
-  return `${window.location.protocol}//${window.location.hostname}:5000`;
+  const port = window.__WWV_LOCAL_ENGINE_PORT__ ?? "5001";
+  return `${window.location.protocol}//${window.location.hostname}:${port}`;
 }
 
 // feet -> meters (matches original bundle's L())
@@ -83,7 +86,7 @@ export default class MilitaryAviationPlugin {
   }
 
   async fetch() {
-    const res = await fetch(`${engineBase()}/api/${PLUGIN_ID}`);
+    const res = await fetch(`${engineBase(this.ctx)}/api/${PLUGIN_ID}`);
     if (!res.ok) throw new Error(`Engine REST HTTP ${res.status}`);
     const data = await res.json();
     return extractItems(data).map(toEntity).filter(Boolean);

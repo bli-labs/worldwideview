@@ -85,9 +85,21 @@ export async function GET(request: Request): Promise<Response> {
     const stream = new ReadableStream({
         async start(controller) {
             const encoder = new TextEncoder();
+            let closed = false;
 
             function send(chunk: string): void {
+                if (closed || cancelled) return;
                 controller.enqueue(encoder.encode(chunk));
+            }
+
+            function closeStream(): void {
+                if (closed) return;
+                closed = true;
+                try {
+                    controller.close();
+                } catch {
+                    // The browser may have already closed the EventSource.
+                }
             }
 
             const startTime = Date.now();
@@ -109,10 +121,16 @@ export async function GET(request: Request): Promise<Response> {
                     if (cancelled) break;
                 }
 
-                controller.close();
+                closeStream();
             } catch (err) {
+                if (cancelled) return;
                 console.error("[globe/commands/stream] stream error:", err);
-                controller.error(err);
+                closed = true;
+                try {
+                    controller.error(err);
+                } catch {
+                    // Already closed by the client.
+                }
             }
         },
         cancel() {

@@ -16,7 +16,8 @@
  *   - sessionId is the tab-scoped UUID from the session heartbeat (passed in
  *     as a prop so this hook stays pure and testable).
  *   - Mirrors useGlobeCommandBridge.ts: effect + interval + cleanup.
- *   - console.error in catch only. No any. No ts-ignore.
+ *   - transient fetch errors from reloads/stale tabs are debug-only.
+ *   - No any. No ts-ignore.
  */
 
 import { useEffect, useRef } from "react";
@@ -25,6 +26,7 @@ import { getNamespacedTools } from "@/lib/mcp/pluginTools";
 import type { PluginToolsEntry } from "@/lib/mcp/pluginTools";
 import type { CatalogTool } from "@/lib/mcpSessionCatalog";
 import type { FilterDefinition } from "@/core/plugins/PluginTypes";
+import { logBackgroundFetchFailure } from "@/core/network/fetchDiagnostics";
 
 /** Re-publish interval in ms -- mirrors the 19a session-heartbeat cadence. */
 const PUBLISH_INTERVAL_MS = 30_000;
@@ -129,7 +131,7 @@ async function publishCatalog(
             console.error("[useMcpCatalogPublisher] catalog POST failed:", res.status);
         }
     } catch (err) {
-        console.error("[useMcpCatalogPublisher] catalog POST error:", err);
+        logBackgroundFetchFailure("useMcpCatalogPublisher", err);
     }
 }
 

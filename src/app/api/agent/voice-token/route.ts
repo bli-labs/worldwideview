@@ -1,24 +1,29 @@
 /**
  * GET / POST /api/agent/voice-token
  *
- * Session-authenticated minting of short-lived Gemini ephemeral tokens for
- * the in-app voice agent. GEMINI_API_KEY stays server-side; the browser gets
- * a single-use token (30 min session cap, 2 min window to start it) and
- * connects to the Live API directly.
+ * Session-authenticated minting of short-lived OpenAI Realtime client secrets
+ * for the in-app voice agent. OPENAI_API_KEY stays server-side; the browser
+ * gets a scoped ephemeral secret and connects to the Realtime API directly.
  *
  * GET  → { configured } — lets the overlay decide whether to render the orb.
- * POST → { token }      — mints the ephemeral token.
+ * POST → { token }      — mints the ephemeral client secret.
  */
 
 import { NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
+import { createHash } from "crypto";
 import { auth } from "@/lib/auth";
 import { isDemo } from "@/core/edition";
 import { redisSlidingWindow } from "@/lib/geocodingRateLimit";
+import { SPATIALCORE_REALTIME_MODEL, SPATIALCORE_SYSTEM_PROMPT, SPATIALCORE_VOICE } from "@/core/voice/persona";
 
 // Per-user budget: a token per connect attempt; 10/min is generous.
 const MINT_LIMIT = 10;
 const MINT_WINDOW_MS = 60_000;
+const OPENAI_CLIENT_SECRETS_URL = "https://api.openai.com/v1/realtime/client_secrets";
+
+function safetyIdentifier(userId: string): string {
+    return createHash("sha256").update(`wwv-voice:${userId}`).digest("hex");
+}
 
 export async function GET(): Promise<Response> {
     if (isDemo) return NextResponse.json({ configured: false }, { status: 403 });
@@ -26,7 +31,7 @@ export async function GET(): Promise<Response> {
     if (!session?.user?.id) {
         return NextResponse.json({ configured: false }, { status: 401 });
     }
-    return NextResponse.json({ configured: Boolean(process.env.GEMINI_API_KEY) });
+    return NextResponse.json({ configured: Boolean(process.env.OPENAI_API_KEY) });
 }
 
 export async function POST(): Promise<Response> {
@@ -39,10 +44,10 @@ export async function POST(): Promise<Response> {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
         return NextResponse.json(
-            { error: "GEMINI_API_KEY is not configured on the server" },
+            { error: "OPENAI_API_KEY is not configured on the server" },
             { status: 503 },
         );
     }
@@ -53,19 +58,32 @@ export async function POST(): Promise<Response> {
     }
 
     try {
-        const ai = new GoogleGenAI({ apiKey });
-        const token = await ai.authTokens.create({
-            config: {
-                uses: 1,
-                expireTime: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-                newSessionExpireTime: new Date(Date.now() + 2 * 60 * 1000).toISOString(),
-                httpOptions: { apiVersion: "v1alpha" },
+        const response = await fetch(OPENAI_CLIENT_SECRETS_URL, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+                "OpenAI-Safety-Identifier": safetyIdentifier(userId),
             },
+            body: JSON.stringify({
+                session: {
+                    type: "realtime",
+                    model: process.env.OPENAI_REALTIME_MODEL || SPATIALCORE_REALTIME_MODEL,
+                    instructions: SPATIALCORE_SYSTEM_PROMPT,
+                    audio: { output: { voice: process.env.OPENAI_REALTIME_VOICE || SPATIALCORE_VOICE } },
+                },
+            }),
         });
-        if (!token.name) {
-            throw new Error("authTokens.create returned no token name");
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(`client_secrets failed (HTTP ${response.status}): ${body.slice(0, 200)}`);
         }
-        return NextResponse.json({ token: token.name }, { headers: { "Cache-Control": "no-store" } });
+        const data = await response.json() as { value?: string; client_secret?: { value?: string } };
+        const token = data.value ?? data.client_secret?.value;
+        if (!token) {
+            throw new Error("client_secrets response had no token value");
+        }
+        return NextResponse.json({ token }, { headers: { "Cache-Control": "no-store" } });
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "unknown error";
         console.error(`[voice-token] mint failed: ${message}`);

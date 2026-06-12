@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useStore } from "@/core/state/store";
 import { buildGlobeSnapshot } from "@/lib/globeState";
+import { logBackgroundFetchFailure } from "@/core/network/fetchDiagnostics";
 
 const STATE_SYNC_DEBOUNCE_MS = 500;
 const STATE_SYNC_HEARTBEAT_MS = 10_000;
@@ -14,7 +15,7 @@ async function pushState(sessionId: string): Promise<void> {
             body: JSON.stringify({ sessionId, snapshot }),
         });
     } catch (err) {
-        console.error("[useGlobeStateSync] Failed to push globe state:", err);
+        logBackgroundFetchFailure("useGlobeStateSync", err);
     }
 }
 

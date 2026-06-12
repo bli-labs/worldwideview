@@ -1,4 +1,4 @@
-import yahooFinance from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
 import { withRetry } from '@worldwideview/seeder-sdk';
 import { isMarketOpen } from './isMarketOpen';
 
@@ -10,6 +10,7 @@ export interface StockTick {
 }
 
 const TICKERS = ['AAPL', 'MSFT', 'NVDA', 'SPY', 'QQQ'];
+const yahooFinance = new YahooFinance();
 
 async function fetchQuotes(): Promise<StockTick[] | null> {
   if (!isMarketOpen()) {
