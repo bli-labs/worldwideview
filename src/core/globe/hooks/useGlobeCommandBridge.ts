@@ -131,7 +131,7 @@ export function useGlobeCommandBridge(sessionId: string): void {
             // the NextAuth session cookie (it cannot send a Bearer header), so an
             // unauthenticated tab fails permanently rather than reconnecting.
             if (es.readyState === EventSource.CLOSED) {
-                console.error(
+                console.warn(
                     "[useGlobeCommandBridge] SSE stream closed without retry -- " +
                         "is this tab signed in? EventSource auths via session cookie, not Bearer.",
                 );

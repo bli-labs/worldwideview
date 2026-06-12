@@ -16,12 +16,13 @@
  *   - effect + interval + cleanup
  *   - inFlightRef prevents overlapping polls
  *   - activeRef prevents state updates after unmount
- *   - console.error in catch only
+ *   - transient fetch errors from reloads/stale tabs are debug-only
  *   - No any, no ts-ignore
  */
 
 import { useEffect, useRef } from "react";
 import { pluginManager } from "@/core/plugins/PluginManager";
+import { logBackgroundFetchFailure } from "@/core/network/fetchDiagnostics";
 
 const POLL_INTERVAL_MS = 1500;
 
@@ -49,7 +50,7 @@ async function pollOnce(sessionId: string, active: { current: boolean }): Promis
         const body = (await res.json()) as { invocations: unknown[] };
         invocations = (body.invocations ?? []).filter(isToolInvocation);
     } catch (err) {
-        console.error("[useMcpRelayBridge] invocations poll failed:", err);
+        logBackgroundFetchFailure("useMcpRelayBridge:poll", err);
         return;
     }
 
@@ -137,7 +138,7 @@ async function postResult(
             body: JSON.stringify({ requestId, sessionId, result }),
         });
     } catch (err) {
-        console.error("[useMcpRelayBridge] postResult failed:", err);
+        logBackgroundFetchFailure("useMcpRelayBridge:postResult", err);
     }
 }
 

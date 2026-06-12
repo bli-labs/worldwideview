@@ -1,26 +1,26 @@
 /**
- * VoiceAgentHandler — Gemini Live API voice session.
+ * VoiceAgentHandler — OpenAI Realtime WebRTC voice session.
  *
- * Connects with a short-lived ephemeral token minted by /api/agent/voice-token
- * (GEMINI_API_KEY never reaches the browser). The persona and tool surface are
- * defined entirely in this codebase: system prompt from persona.ts, tools from
- * the WWV MCP bridge, registered as function declarations at session start.
- *
- * Audio: mic → 16 kHz PCM16 chunks via MicCapture; responses → 24 kHz PCM16
- * through AudioPlayback. Audio input pauses while a tool call is in flight —
- * Gemini rejects sendRealtimeInput during tool processing.
+ * Connects with a short-lived client secret minted by /api/agent/voice-token.
+ * The browser sends mic audio over WebRTC, receives model audio as a remote
+ * track, and exchanges session/tool events on the "oai-events" data channel.
  */
 
-import { GoogleGenAI, Modality } from "@google/genai";
-import type { Session, LiveServerMessage, LiveServerContent, FunctionCall } from "@google/genai";
 import type { AgentToolDefinition, VoiceState } from "./types";
-import { MicCapture, AudioPlayback, base64ToArrayBuffer } from "./liveAudio";
-import { SPATIALCORE_SYSTEM_PROMPT, SPATIALCORE_VOICE, SPATIALCORE_LIVE_MODEL } from "./persona";
+import { AudioLevelMonitor } from "./AudioLevelMonitor";
+import {
+    eventErrorMessage,
+    eventText,
+    parseArguments,
+    parseRealtimeEvent,
+    type FunctionCallItem,
+    type RealtimeEvent,
+} from "./realtimeEvents";
+import { sanitizeSchema } from "./toolSchema";
 
 const TOKEN_URL = "/api/agent/voice-token";
-// Oversized tool responses crash the Live socket with code 1008.
+const REALTIME_CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 const MAX_TOOL_RESPONSE_CHARS = 8000;
-const MAX_RECONNECT_ATTEMPTS = 3;
 
 export type ToolCallHandler = (name: string, args: Record<string, unknown>) => Promise<string>;
 
@@ -29,242 +29,264 @@ export interface VoiceAgentHandlerConfig {
     onToolCall: ToolCallHandler;
     onStateChange?: (state: VoiceState) => void;
     onAudioLevel?: (level: number) => void;
+    onDebug?: (message: string) => void;
     onTranscript?: (role: "user" | "agent", text: string) => void;
 }
 
-/** Gemini's schema dialect rejects some JSON-Schema keywords zod emits. */
-function sanitizeSchema(value: unknown): unknown {
-    if (Array.isArray(value)) return value.map(sanitizeSchema);
-    if (value && typeof value === "object") {
-        const out: Record<string, unknown> = {};
-        for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
-            if (key === "$schema" || key === "additionalProperties") continue;
-            out[key] = sanitizeSchema(v);
-        }
-        return out;
-    }
-    return value;
-}
+export { sanitizeSchema };
 
 export class VoiceAgentHandler {
-    private session: Session | null = null;
-    private mic = new MicCapture();
-    private playback: AudioPlayback;
+    private peerConnection: RTCPeerConnection | null = null;
+    private dataChannel: RTCDataChannel | null = null;
+    private mediaStream: MediaStream | null = null;
+    private audioElement: HTMLAudioElement | null = null;
+    private readonly levelMonitor: AudioLevelMonitor;
+    private handledCallIds = new Set<string>();
+    private agentTranscriptBuffer = "";
+    private intentionalDisconnect = false;
 
     isConnected = false;
     isRecording = false;
 
-    private toolCallInProgress = false;
-    private intentionalDisconnect = false;
-    private reconnectAttempts = 0;
-    private userTranscriptBuffer = "";
-    private agentTranscriptBuffer = "";
-
     constructor(private readonly config: VoiceAgentHandlerConfig) {
-        this.playback = new AudioPlayback({
-            onLevel: (level) => this.config.onAudioLevel?.(level),
-            onPlaybackStart: () => this.updateState("speaking"),
-            onPlaybackEnd: () => this.updateDerivedState(),
-        });
+        this.levelMonitor = new AudioLevelMonitor((level) => this.config.onAudioLevel?.(level));
     }
 
     async connect(): Promise<void> {
         try {
             this.intentionalDisconnect = false;
-            this.toolCallInProgress = false;
             this.updateState("connecting");
 
+            this.config.onDebug?.("Requesting OpenAI Realtime client secret");
             const tokenRes = await fetch(TOKEN_URL, { method: "POST" });
             if (!tokenRes.ok) {
                 const body = await tokenRes.text();
                 throw new Error(`voice token request failed (HTTP ${tokenRes.status}): ${body.slice(0, 200)}`);
             }
-            const { token } = await tokenRes.json();
+            const { token } = await tokenRes.json() as { token?: string };
             if (!token) throw new Error("voice token response had no token");
+            this.config.onDebug?.("OpenAI Realtime token received");
 
-            const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
+            const pc = new RTCPeerConnection();
+            this.peerConnection = pc;
+            this.audioElement = new Audio();
+            this.audioElement.autoplay = true;
 
-            this.session = await ai.live.connect({
-                model: SPATIALCORE_LIVE_MODEL,
-                config: {
-                    responseModalities: [Modality.AUDIO],
-                    speechConfig: {
-                        voiceConfig: { prebuiltVoiceConfig: { voiceName: SPATIALCORE_VOICE } },
-                    },
-                    // Thinking makes the model emit text blocks instead of audio,
-                    // which crashes tool-calling sessions with code 1008.
-                    thinkingConfig: { thinkingBudget: 0 },
-                    systemInstruction: SPATIALCORE_SYSTEM_PROMPT,
-                    inputAudioTranscription: {},
-                    outputAudioTranscription: {},
-                    tools: [{
-                        functionDeclarations: this.config.tools.map((tool) => ({
-                            name: tool.name,
-                            description: tool.description,
-                            parameters: sanitizeSchema(tool.inputSchema) as undefined,
-                        })),
-                    }],
-                },
-                callbacks: {
-                    onmessage: (message: LiveServerMessage) => this.handleMessage(message),
-                    onerror: (e: ErrorEvent) => {
-                        console.error("[VoiceAgent] Live error:", e?.message ?? e);
-                    },
-                    onclose: (e: CloseEvent) => this.handleClose(e),
+            pc.ontrack = (event) => {
+                if (this.audioElement) {
+                    this.audioElement.srcObject = event.streams[0];
+                    this.audioElement.play().catch(() => { /* autoplay may already be satisfied */ });
+                }
+                this.updateState("speaking");
+            };
+            pc.onconnectionstatechange = () => this.handleConnectionState(pc.connectionState);
+
+            this.config.onDebug?.("Starting microphone capture");
+            this.mediaStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
                 },
             });
+            for (const track of this.mediaStream.getAudioTracks()) {
+                pc.addTrack(track, this.mediaStream);
+            }
+            this.levelMonitor.start(this.mediaStream);
+
+            const dc = pc.createDataChannel("oai-events");
+            this.dataChannel = dc;
+            const channelOpen = this.waitForDataChannel(dc);
+            dc.addEventListener("message", (event) => this.handleDataMessage(event));
+            dc.addEventListener("close", () => this.handleChannelClose());
+
+            this.config.onDebug?.("Connecting to OpenAI Realtime (gpt-realtime-2)");
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            const sdpRes = await fetch(REALTIME_CALLS_URL, {
+                method: "POST",
+                body: offer.sdp,
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/sdp",
+                },
+            });
+            if (!sdpRes.ok) {
+                const body = await sdpRes.text();
+                throw new Error(`Realtime SDP exchange failed (HTTP ${sdpRes.status}): ${body.slice(0, 200)}`);
+            }
+            await pc.setRemoteDescription({ type: "answer", sdp: await sdpRes.text() });
+            await channelOpen;
 
             this.isConnected = true;
-            await this.startMic();
+            this.isRecording = true;
+            this.config.onDebug?.("OpenAI Realtime connected");
+            this.sendSessionUpdate();
+            this.updateState("recording");
         } catch (error) {
             console.error("[VoiceAgent] Connection error:", error);
-            this.isConnected = false;
-            this.isRecording = false;
+            this.config.onDebug?.(`OpenAI Realtime error: ${(error as Error).message}`);
+            await this.disconnect();
             this.updateState("error");
             throw error;
         }
     }
 
-    private handleClose(e: CloseEvent): void {
-        this.isConnected = false;
-        this.isRecording = false;
-        const transient = e?.code === 1008 || e?.code === 1011;
-        if (transient && !this.intentionalDisconnect && this.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            this.reconnectAttempts++;
-            const delay = this.reconnectAttempts * 1000;
-            console.warn(`[VoiceAgent] Transient close (${e.code}); reconnecting in ${delay}ms (${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
-            this.updateState("connecting");
-            setTimeout(() => {
-                this.session = null;
-                this.mic.stop();
-                this.playback.stopAll();
-                this.connect()
-                    .then(() => { this.reconnectAttempts = 0; })
-                    .catch(() => this.updateState("disconnected"));
-            }, delay);
-        } else if (!this.intentionalDisconnect) {
-            this.updateState("disconnected");
-        }
-    }
-
-    private handleMessage(message: LiveServerMessage): void {
-        try {
-            if (message.serverContent) this.handleServerContent(message.serverContent);
-            if (message.toolCall) {
-                this.flushUserTranscript();
-                void this.handleToolCall(message.toolCall.functionCalls || []);
-            }
-        } catch (error) {
-            console.error("[VoiceAgent] Message handling error:", error);
-        }
-    }
-
-    private handleServerContent(content: LiveServerContent): void {
-        if (content.modelTurn) {
-            this.flushUserTranscript();
-            for (const part of content.modelTurn.parts || []) {
-                if (part.inlineData?.data) {
-                    this.playback.enqueue(base64ToArrayBuffer(part.inlineData.data));
-                }
-            }
-        }
-
-        if (content.inputTranscription?.text) {
-            this.userTranscriptBuffer += content.inputTranscription.text;
-        }
-        if (content.inputTranscription?.finished) {
-            this.flushUserTranscript();
-        }
-        if (content.outputTranscription?.text) {
-            this.agentTranscriptBuffer += content.outputTranscription.text;
-        }
-
-        if (content.turnComplete) {
-            const text = this.agentTranscriptBuffer.trim();
-            if (text) this.config.onTranscript?.("agent", text);
-            this.agentTranscriptBuffer = "";
-            if (!this.playback.isPlaying) this.updateDerivedState();
-        }
-
-        if (content.interrupted) {
-            this.userTranscriptBuffer = "";
-            this.agentTranscriptBuffer = "";
-            this.playback.interrupt();
-        }
-    }
-
-    private flushUserTranscript(): void {
-        const text = this.userTranscriptBuffer.trim();
-        if (text) this.config.onTranscript?.("user", text);
-        this.userTranscriptBuffer = "";
-    }
-
-    private async handleToolCall(functionCalls: FunctionCall[]): Promise<void> {
-        this.toolCallInProgress = true;
-        const responses: Array<{ id: string; name: string; response: Record<string, unknown> }> = [];
-
-        for (const call of functionCalls) {
-            const name = call.name || "";
-            const args = (call.args || {}) as Record<string, unknown>;
-            let result: string;
-            try {
-                result = await this.config.onToolCall(name, args);
-            } catch (error) {
-                result = JSON.stringify({ error: (error as Error).message });
-            }
-            if (result.length > MAX_TOOL_RESPONSE_CHARS) {
-                result = `${result.slice(0, MAX_TOOL_RESPONSE_CHARS)}… [truncated, ${result.length} chars total]`;
-            }
-            responses.push({
-                id: call.id || `call_${responses.length}`,
-                name,
-                response: { result },
-            });
-        }
-
-        if (responses.length > 0 && this.session) {
-            this.session.sendToolResponse({ functionResponses: responses });
-        }
-        this.toolCallInProgress = false;
-    }
-
-    private async startMic(): Promise<void> {
-        await this.mic.start((base64Pcm16) => {
-            if (this.isConnected && this.isRecording && this.session && !this.toolCallInProgress) {
-                this.session.sendRealtimeInput({
-                    audio: { data: base64Pcm16, mimeType: "audio/pcm;rate=16000" },
-                });
-            }
-        });
-        this.isRecording = true;
-        this.updateState("recording");
-    }
-
-    /** Mute/unmute without tearing the session down. */
     setMuted(muted: boolean): void {
         this.isRecording = !muted;
+        for (const track of this.mediaStream?.getAudioTracks() ?? []) {
+            track.enabled = !muted;
+        }
         this.updateDerivedState();
     }
 
     async disconnect(): Promise<void> {
         this.intentionalDisconnect = true;
-        this.reconnectAttempts = 0;
-        this.mic.stop();
-        this.playback.stopAll();
-        if (this.session) {
-            try { this.session.close(); } catch { /* already closed */ }
-            this.session = null;
-        }
         this.isConnected = false;
         this.isRecording = false;
+        this.levelMonitor.stop();
+        this.dataChannel?.close();
+        this.dataChannel = null;
+        this.peerConnection?.close();
+        this.peerConnection = null;
+        if (this.audioElement) {
+            this.audioElement.pause();
+            this.audioElement.srcObject = null;
+            this.audioElement = null;
+        }
+        if (this.mediaStream) {
+            this.mediaStream.getTracks().forEach((track) => track.stop());
+            this.mediaStream = null;
+        }
         this.updateState("disconnected");
+    }
+
+    private waitForDataChannel(channel: RTCDataChannel): Promise<void> {
+        if (channel.readyState === "open") return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            const timeout = window.setTimeout(() => reject(new Error("Realtime data channel did not open")), 10_000);
+            channel.addEventListener("open", () => {
+                window.clearTimeout(timeout);
+                resolve();
+            }, { once: true });
+            channel.addEventListener("error", () => {
+                window.clearTimeout(timeout);
+                reject(new Error("Realtime data channel failed"));
+            }, { once: true });
+        });
+    }
+
+    private sendSessionUpdate(): void {
+        this.sendEvent({
+            type: "session.update",
+            session: {
+                type: "realtime",
+                tools: this.config.tools.map((tool) => ({
+                    type: "function",
+                    name: tool.name,
+                    description: tool.description,
+                    parameters: sanitizeSchema(tool.inputSchema),
+                })),
+                tool_choice: "auto",
+            },
+        });
+        this.config.onDebug?.(`Registered ${this.config.tools.length} OpenAI function tools`);
+    }
+
+    private sendEvent(event: Record<string, unknown>): void {
+        if (this.dataChannel?.readyState === "open") {
+            this.dataChannel.send(JSON.stringify(event));
+        }
+    }
+
+    private handleDataMessage(message: MessageEvent<string>): void {
+        const event = parseRealtimeEvent(message.data);
+        if (!event) return;
+
+        if (event.type === "error") {
+            this.config.onDebug?.(`OpenAI Realtime error: ${eventErrorMessage(event)}`);
+            return;
+        }
+
+        if (event.type === "conversation.item.input_audio_transcription.completed") {
+            const transcript = eventText(event, "transcript").trim();
+            if (transcript) this.config.onTranscript?.("user", transcript);
+        }
+        if (event.type === "response.audio_transcript.delta") {
+            this.agentTranscriptBuffer += eventText(event, "delta");
+        }
+        if (event.type === "response.audio_transcript.done") {
+            const transcript = eventText(event, "transcript").trim() || this.agentTranscriptBuffer.trim();
+            if (transcript) this.config.onTranscript?.("agent", transcript);
+            this.agentTranscriptBuffer = "";
+        }
+        if (event.type === "response.done" && this.agentTranscriptBuffer.trim()) {
+            this.config.onTranscript?.("agent", this.agentTranscriptBuffer.trim());
+            this.agentTranscriptBuffer = "";
+            this.updateDerivedState();
+        }
+
+        if (event.type === "response.function_call_arguments.done") {
+            const call = event as RealtimeEvent & FunctionCallItem;
+            void this.handleToolCall(call.call_id, call.name, call.arguments);
+        }
+        if (event.type === "response.output_item.done") {
+            const item = event.item as FunctionCallItem | undefined;
+            if (item?.type === "function_call") {
+                void this.handleToolCall(item.call_id, item.name, item.arguments);
+            }
+        }
+    }
+
+    private async handleToolCall(callId: string | undefined, name: string | undefined, rawArgs: string | undefined): Promise<void> {
+        if (!callId || !name || this.handledCallIds.has(callId)) return;
+        this.handledCallIds.add(callId);
+        this.updateState("connected");
+
+        let result: string;
+        try {
+            result = await this.config.onToolCall(name, parseArguments(rawArgs));
+        } catch (error) {
+            result = JSON.stringify({ error: (error as Error).message });
+        }
+        if (result.length > MAX_TOOL_RESPONSE_CHARS) {
+            result = `${result.slice(0, MAX_TOOL_RESPONSE_CHARS)}... [truncated, ${result.length} chars total]`;
+        }
+
+        this.sendEvent({
+            type: "conversation.item.create",
+            item: {
+                type: "function_call_output",
+                call_id: callId,
+                output: result,
+            },
+        });
+        this.sendEvent({ type: "response.create" });
+        this.updateDerivedState();
+    }
+
+    private handleConnectionState(state: RTCPeerConnectionState): void {
+        this.config.onDebug?.(`OpenAI Realtime connection state: ${state}`);
+        if ((state === "failed" || state === "closed" || state === "disconnected") && !this.intentionalDisconnect) {
+            this.isConnected = false;
+            this.isRecording = false;
+            this.updateState("disconnected");
+        }
+    }
+
+    private handleChannelClose(): void {
+        if (!this.intentionalDisconnect) {
+            this.config.onDebug?.("OpenAI Realtime data channel closed");
+            this.isConnected = false;
+            this.isRecording = false;
+            this.updateState("disconnected");
+        }
     }
 
     private updateDerivedState(): void {
         if (!this.isConnected) {
             this.updateState("disconnected");
-        } else if (this.playback.isPlaying) {
-            this.updateState("speaking");
         } else if (this.isRecording) {
             this.updateState("recording");
         } else {

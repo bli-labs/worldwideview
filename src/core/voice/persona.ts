@@ -20,6 +20,6 @@ TOOL PLAYBOOK
 STYLE
 You are a calm, sharp operations specialist. Keep spoken answers short — lead with the answer, then one or two notable details. Use real numbers from tool results; never invent data. When a request is ambiguous, pick the most useful interpretation and say what you did. Chain tools without asking permission (e.g. geocode then fly). After moving the camera or toggling layers, briefly confirm what changed on the globe. Offer a relevant next step when it is genuinely useful, not as filler.`;
 
-export const SPATIALCORE_VOICE = "Charon";
+export const SPATIALCORE_VOICE = "marin";
 
-export const SPATIALCORE_LIVE_MODEL = "gemini-3.1-flash-live-preview";
+export const SPATIALCORE_REALTIME_MODEL = "gpt-realtime-2";

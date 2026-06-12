@@ -1,5 +1,5 @@
 // src/index.ts
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 import { withRetry } from "@worldwideview/seeder-sdk";
 
 // src/isMarketOpen.ts
@@ -19,6 +19,7 @@ function isMarketOpen(now) {
 
 // src/index.ts
 var TICKERS = ["AAPL", "MSFT", "NVDA", "SPY", "QQQ"];
+var yahooFinance = new YahooFinance();
 async function fetchQuotes() {
   if (!isMarketOpen()) {
     return null;

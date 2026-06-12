@@ -2,8 +2,8 @@
  * useVoiceAgent — React orchestration for the in-app voice agent.
  *
  * Lifecycle per session: discover the WWV MCP tool surface via the bridge,
- * open a Gemini Live session with those tools registered as function
- * declarations, and route every tool call back through MCP. Transcript
+ * open an OpenAI Realtime session with those tools registered as function
+ * tools, and route every tool call back through MCP. Transcript
  * entries (user/agent speech and tool activity) accumulate for the panel.
  */
 
@@ -43,7 +43,9 @@ export function useVoiceAgent() {
 
             // Discover the live MCP tool surface; the Live session's function
             // declarations mirror it exactly (including per-session plugin tools).
+            addEntry({ role: "tool", toolName: "voice", text: "Discovering MCP tools" });
             const tools = await bridge.listTools();
+            addEntry({ role: "tool", toolName: "voice", text: `Discovered ${tools.length} MCP tools` });
             if (process.env.NODE_ENV !== "production") {
                 console.log(
                     `[VoiceAgent] Registering ${tools.length} MCP tools:`,
@@ -62,6 +64,7 @@ export function useVoiceAgent() {
                 },
                 onStateChange: setState,
                 onAudioLevel: setAudioLevel,
+                onDebug: (message) => addEntry({ role: "tool", toolName: "voice", text: message }),
                 onTranscript: (role, text) => addEntry({ role, text }),
             });
 

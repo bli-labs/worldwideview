@@ -57,8 +57,8 @@
     "runtime": "Node.js 20.0.0"
   },
   "build": {
-    "buildCommand": "pnpm test 2>&1 | tail -4 && pnpm build 2>&1 | tail -3",
-    "testCommand": "pnpm test 2>&1 | tail -4; echo \"=== LINT (voice files) ===\"; pnpm exec eslint src/core/voice/ src/components/voice/ src/app/api/agent/ 2>&1 | tail -20",
+    "buildCommand": "git add -A && git status --short | grep -v '.omc' && git commit -q -m \"feat(voice): switch the voice agent to Gemini Live (self-hosted brain)\n\nReplaces the ElevenLabs backend. The agent's persona and tools now live\nentirely in this codebase — no third-party dashboard, so the agent can\nnever drift back to an unrelated config. Uses the GEMINI_API_KEY the\noperator already holds.\n\n- /api/agent/voice-token: session-authed minting of single-use Gemini\n  ephemeral tokens (30-min cap); GEMINI_API_KEY stays server-side. GET\n  reports { configured } so the overlay only renders the orb when the\n  backend is ready.\n- VoiceAgentHandler: Gemini Live session (gemini-2.5-flash native audio),\n  MCP tools registered as function declarations, input/output\n  transcription → transcript panel, audio-input pause during tool calls,\n  1008/1011 auto-reconnect. liveAudio.ts: 16kHz mic worklet capture +\n  24kHz scheduled playback with level metering. persona.ts: SpatialCore\n  operator prompt + voice + model, all in-repo.\n- McpToolBridge, orb UI, transcript panel unchanged — tools still\n  discovered live from the WWV MCP surface.\n- Removed @elevenlabs/client, scripts/setup-voice-agent.mjs; added\n  @google/genai. Docs rewritten: one env var (GEMINI_API_KEY).\n\nVerified live: orb → CONNECTING → LISTENING, clean console (token\nminted, Live socket connected, mic acquired). pnpm test 1031 passed,\npnpm build green, voice files lint clean.\" && git push git@github.com:bli-labs/worldwideview.git main 2>&1 | tail -2 && git fetch origin 2>&1 | tail -1",
+    "testCommand": "export PATH=\"$HOME/.nvm/versions/node/v24.16.0/bin:$PATH\" && pnpm test 2>&1 | tail -8",
     "lintCommand": "pnpm lint",
     "devCommand": "pnpm dev",
     "scripts": {
@@ -317,6 +317,24 @@
       "type": "file"
     },
     {
+      "path": "src/core/voice/VoiceAgentHandler.ts",
+      "accessCount": 4,
+      "lastAccessed": 1781282102508,
+      "type": "file"
+    },
+    {
+      "path": "src/core/voice/useVoiceAgent.ts",
+      "accessCount": 4,
+      "lastAccessed": 1781282332750,
+      "type": "file"
+    },
+    {
+      "path": "src/core/voice/persona.ts",
+      "accessCount": 4,
+      "lastAccessed": 1781282765944,
+      "type": "file"
+    },
+    {
       "path": "src/components/layout/AppShell.tsx",
       "accessCount": 3,
       "lastAccessed": 1781273630247,
@@ -332,18 +350,6 @@
       "path": "package.json",
       "accessCount": 3,
       "lastAccessed": 1781276061297,
-      "type": "file"
-    },
-    {
-      "path": "src/core/voice/VoiceAgentHandler.ts",
-      "accessCount": 3,
-      "lastAccessed": 1781277522287,
-      "type": "file"
-    },
-    {
-      "path": "src/core/voice/useVoiceAgent.ts",
-      "accessCount": 3,
-      "lastAccessed": 1781277584319,
       "type": "file"
     },
     {
@@ -395,6 +401,12 @@
       "type": "file"
     },
     {
+      "path": "src/core/voice/liveAudio.ts",
+      "accessCount": 2,
+      "lastAccessed": 1781282097601,
+      "type": "file"
+    },
+    {
       "path": "src/lib/mcp/registerCapabilities.ts",
       "accessCount": 1,
       "lastAccessed": 1781273386958,
@@ -419,21 +431,15 @@
       "type": "file"
     },
     {
-      "path": "src/core/voice/persona.ts",
-      "accessCount": 1,
-      "lastAccessed": 1781277412895,
-      "type": "file"
-    },
-    {
-      "path": "src/core/voice/liveAudio.ts",
-      "accessCount": 1,
-      "lastAccessed": 1781277461328,
-      "type": "file"
-    },
-    {
       "path": "src/app/api/agent/voice-token/route.ts",
       "accessCount": 1,
       "lastAccessed": 1781277565288,
+      "type": "file"
+    },
+    {
+      "path": "scripts/dev.mjs",
+      "accessCount": 1,
+      "lastAccessed": 1781281851603,
       "type": "file"
     }
   ],

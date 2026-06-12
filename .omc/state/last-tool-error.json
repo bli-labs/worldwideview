@@ -1,7 +1,0 @@
-{
-  "tool_name": "mcp__plugin_chrome-devtools-mcp_chrome-devtools__wait_for",
-  "tool_input_preview": "{\"text\":[\"ASK SPATIALCORE\"],\"timeout\":20000}",
-  "error": "Error: Timed out after waiting 20000ms",
-  "timestamp": "2026-06-12T15:21:38.345Z",
-  "retry_count": 1
-}

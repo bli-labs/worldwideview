@@ -12,6 +12,7 @@ import {
 } from "@/lib/marketplace/trustedPlugins";
 import { getDisabledPluginIds } from "@/core/plugins/pluginPreferences";
 import { isDemo } from "@/core/edition";
+import { logBackgroundFetchFailure } from "@/core/network/fetchDiagnostics";
 
 /**
  * Syncs marketplace-installed plugins on window focus.
@@ -145,7 +146,7 @@ export function useMarketplaceSync(hostReady: boolean) {
                 });
             }
         } catch (err) {
-            console.error("[MarketplaceSync] Sync failed:", err);
+            logBackgroundFetchFailure("MarketplaceSync", err);
         }
     }
 

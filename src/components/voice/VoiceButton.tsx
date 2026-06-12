@@ -7,11 +7,13 @@
 
 "use client";
 
+import type { CSSProperties } from "react";
 import { useEffect, useRef } from "react";
 import type { VoiceState } from "@/core/voice/types";
 
 interface VoiceButtonProps {
     state: VoiceState;
+    audioLevel: number;
     onClick: () => void;
     onDisconnect: () => void;
 }
@@ -44,10 +46,20 @@ function stateLabel(state: VoiceState): string {
     }
 }
 
-export function VoiceButton({ state, onClick, onDisconnect }: VoiceButtonProps) {
+type VoiceLevelStyle = CSSProperties & {
+    "--voice-input-glow": string;
+    "--voice-input-scale": string;
+};
+
+export function VoiceButton({ state, audioLevel, onClick, onDisconnect }: VoiceButtonProps) {
     const isActive = state === "connected" || state === "recording" || state === "speaking";
     const mercuryRef = useRef<HTMLDivElement>(null);
     const rafRef = useRef<number>(0);
+    const level = Math.max(0, Math.min(1, audioLevel));
+    const levelStyle: VoiceLevelStyle = {
+        "--voice-input-glow": `${18 + level * 30}px`,
+        "--voice-input-scale": `${1 + level * 0.08}`,
+    };
 
     useEffect(() => {
         const el = mercuryRef.current;
@@ -110,7 +122,7 @@ export function VoiceButton({ state, onClick, onDisconnect }: VoiceButtonProps) 
 
     return (
         <div className="voice-button-dock">
-            <div className={wrapperClass}>
+            <div className={wrapperClass} style={levelStyle}>
                 <div ref={mercuryRef} className="voice-mercury" />
                 <button
                     onClick={isActive ? onDisconnect : onClick}

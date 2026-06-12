@@ -9,6 +9,35 @@
  * This script prints actionable warnings instead.
  */
 
+import { existsSync, readFileSync } from "node:fs";
+
+function unquote(value) {
+    const trimmed = value.trim();
+    if (
+        (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    ) {
+        return trimmed.slice(1, -1);
+    }
+    return trimmed;
+}
+
+function loadEnvFile(path) {
+    if (!existsSync(path)) return;
+    for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const eq = trimmed.indexOf("=");
+        if (eq === -1) continue;
+        const key = trimmed.slice(0, eq).trim();
+        if (!key || key.startsWith("export ")) continue;
+        process.env[key] = unquote(trimmed.slice(eq + 1));
+    }
+}
+
+loadEnvFile(".env");
+loadEnvFile(".env.local");
+
 const checks = [
     {
         name: "NEXT_PUBLIC_CESIUM_ION_TOKEN",

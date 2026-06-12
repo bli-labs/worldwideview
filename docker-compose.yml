@@ -89,6 +89,8 @@ services:
 
   wwv-redis:
     image: redis:7-alpine
+    ports:
+      - "${WWV_REDIS_HOST_PORT:-6379}:6379"
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
