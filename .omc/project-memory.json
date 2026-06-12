@@ -1,0 +1,441 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1781272559839,
+  "projectRoot": "/Users/nick/Sites/godseye",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": ">=20.0.0",
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "next",
+        "version": "16.2.7",
+        "category": "fullstack"
+      },
+      {
+        "name": "react",
+        "version": "19.2.7",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "19.2.7",
+        "category": "frontend"
+      },
+      {
+        "name": "@playwright/test",
+        "version": "1.60.0",
+        "category": "testing"
+      },
+      {
+        "name": "vite",
+        "version": "8.0.16",
+        "category": "build"
+      },
+      {
+        "name": "vitest",
+        "version": "4.1.7",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "pnpm",
+    "runtime": "Node.js 20.0.0"
+  },
+  "build": {
+    "buildCommand": "pnpm test 2>&1 | tail -4 && pnpm build 2>&1 | tail -3",
+    "testCommand": "pnpm test 2>&1 | tail -4; echo \"=== LINT (voice files) ===\"; pnpm exec eslint src/core/voice/ src/components/voice/ src/app/api/agent/ 2>&1 | tail -20",
+    "lintCommand": "pnpm lint",
+    "devCommand": "pnpm dev",
+    "scripts": {
+      "setup": "node scripts/setup.mjs",
+      "test-worktree": "node scripts/test-worktree.mjs",
+      "clean": "node -e \"const fs=require('fs');fs.rmSync('.next',{recursive:true,force:true})\"",
+      "dev": "node scripts/dev.mjs",
+      "dev:all": "concurrently -n \"dev,backends\" -c \"magenta,blue\" \"pnpm dev\" \"pnpm dev:backends\"",
+      "dev:backends": "docker compose --profile engine up wwv-data-engine wwv-redis",
+      "dev:plugins": "node scripts/watch-local-plugins.mjs",
+      "predev": "node scripts/boot-db.mjs && npx dotenv-cli -c -- node scripts/safe-db-push.mjs && npx prisma generate && node scripts/copy-cesium.mjs && node scripts/sync-local-plugins.mjs",
+      "copy-cesium": "node scripts/copy-cesium.mjs",
+      "prebuild": "node scripts/check-build-env.mjs",
+      "build": "next build --webpack",
+      "start": "next start",
+      "test": "vitest run",
+      "test:e2e": "playwright test",
+      "test:mutate": "stryker run",
+      "lint": "eslint .",
+      "db:reset": "npx prisma migrate reset --force",
+      "db:prune": "node scripts/db-prune.mjs",
+      "generate": "prisma generate"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": "ES modules",
+    "testPattern": "*.spec.ts",
+    "fileOrganization": "type-based"
+  },
+  "structure": {
+    "isMonorepo": true,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "public",
+      "scripts",
+      "src",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "deploy": {
+      "path": "deploy",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1781272559816,
+      "keyFiles": [
+        "INFRA-CHECKLIST.md"
+      ]
+    },
+    "docker": {
+      "path": "docker",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1781272559817,
+      "keyFiles": []
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 16,
+      "lastAccessed": 1781272559823,
+      "keyFiles": [
+        "ARCHITECTURE.md",
+        "agent-bus.md",
+        "build-system.md",
+        "deployment.md",
+        "development.md"
+      ]
+    },
+    "local-plugins": {
+      "path": "local-plugins",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1781272559824,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "local-scripts": {
+      "path": "local-scripts",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1781272559825,
+      "keyFiles": []
+    },
+    "local-seeders": {
+      "path": "local-seeders",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1781272559825,
+      "keyFiles": []
+    },
+    "packages": {
+      "path": "packages",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1781272559826,
+      "keyFiles": []
+    },
+    "prisma": {
+      "path": "prisma",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1781272559826,
+      "keyFiles": [
+        "schema.prisma"
+      ]
+    },
+    "public": {
+      "path": "public",
+      "purpose": "Public files",
+      "fileCount": 9,
+      "lastAccessed": 1781272559827,
+      "keyFiles": [
+        "ads.txt",
+        "airplane.zip",
+        "borders.geojson",
+        "cameras_geojson.json",
+        "favicon.svg"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 20,
+      "lastAccessed": 1781272559828,
+      "keyFiles": [
+        "boot-db.mjs",
+        "check-build-env.mjs",
+        "cleanup-plugins.ts",
+        "convertCameras.ts",
+        "copy-cesium.mjs"
+      ]
+    },
+    "self-host": {
+      "path": "self-host",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1781272559828,
+      "keyFiles": [
+        "docker-compose.yml",
+        "setup.ps1",
+        "setup.sh"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 6,
+      "lastAccessed": 1781272559828,
+      "keyFiles": [
+        "instrumentation.spec.ts",
+        "instrumentation.ts",
+        "proxy.ts",
+        "sentry.client.config.ts",
+        "sentry.edge.config.ts"
+      ]
+    },
+    "test-compose": {
+      "path": "test-compose",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1781272559829,
+      "keyFiles": [
+        "docker-compose.yml"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 11,
+      "lastAccessed": 1781272559829,
+      "keyFiles": [
+        "bottom-panel.spec.ts",
+        "example.spec.ts",
+        "global.setup.ts",
+        "global.teardown.ts",
+        "marketplace-from-instance.spec.ts"
+      ]
+    },
+    "docs/assets": {
+      "path": "docs/assets",
+      "purpose": "Static assets",
+      "fileCount": 1,
+      "lastAccessed": 1781272559831,
+      "keyFiles": [
+        "screenshot.png"
+      ]
+    },
+    "prisma/migrations": {
+      "path": "prisma/migrations",
+      "purpose": "Database migrations",
+      "fileCount": 1,
+      "lastAccessed": 1781272559833,
+      "keyFiles": [
+        "migration_lock.toml"
+      ]
+    },
+    "public/data": {
+      "path": "public/data",
+      "purpose": "Data files",
+      "fileCount": 1,
+      "lastAccessed": 1781272559834,
+      "keyFiles": [
+        "undersea-cables.geojson"
+      ]
+    },
+    "src/app": {
+      "path": "src/app",
+      "purpose": "Application code",
+      "fileCount": 5,
+      "lastAccessed": 1781272559837,
+      "keyFiles": [
+        "global-error.tsx",
+        "globals.css",
+        "icon.svg"
+      ]
+    },
+    "src/components": {
+      "path": "src/components",
+      "purpose": "UI components",
+      "fileCount": 0,
+      "lastAccessed": 1781272559838,
+      "keyFiles": []
+    },
+    "src/lib": {
+      "path": "src/lib",
+      "purpose": "Library code",
+      "fileCount": 40,
+      "lastAccessed": 1781272559838,
+      "keyFiles": [
+        "AuthConfig.test.ts",
+        "analytics.test.ts",
+        "analytics.ts"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src/app/api/mcp/route.ts",
+      "accessCount": 6,
+      "lastAccessed": 1781273451491,
+      "type": "file"
+    },
+    {
+      "path": "docs/voice-agent.md",
+      "accessCount": 4,
+      "lastAccessed": 1781277622970,
+      "type": "file"
+    },
+    {
+      "path": "src/components/layout/AppShell.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1781273630247,
+      "type": "file"
+    },
+    {
+      "path": "src/components/voice/VoiceButton.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1781276015889,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 3,
+      "lastAccessed": 1781276061297,
+      "type": "file"
+    },
+    {
+      "path": "src/core/voice/VoiceAgentHandler.ts",
+      "accessCount": 3,
+      "lastAccessed": 1781277522287,
+      "type": "file"
+    },
+    {
+      "path": "src/core/voice/useVoiceAgent.ts",
+      "accessCount": 3,
+      "lastAccessed": 1781277584319,
+      "type": "file"
+    },
+    {
+      "path": "src/components/voice/VoiceAgentOverlay.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1781277593827,
+      "type": "file"
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1781273626955,
+      "type": "file"
+    },
+    {
+      "path": "next.config.ts",
+      "accessCount": 2,
+      "lastAccessed": 1781273961786,
+      "type": "file"
+    },
+    {
+      "path": ".agents/rules/deployment-and-testing.md",
+      "accessCount": 2,
+      "lastAccessed": 1781273998643,
+      "type": "file"
+    },
+    {
+      "path": "docker-compose.yml",
+      "accessCount": 2,
+      "lastAccessed": 1781274614650,
+      "type": "file"
+    },
+    {
+      "path": "src/core/voice/types.ts",
+      "accessCount": 2,
+      "lastAccessed": 1781275951063,
+      "type": "file"
+    },
+    {
+      "path": "src/styles/voice-agent.css",
+      "accessCount": 2,
+      "lastAccessed": 1781276017511,
+      "type": "file"
+    },
+    {
+      "path": "scripts/setup-voice-agent.mjs",
+      "accessCount": 2,
+      "lastAccessed": 1781277112739,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/mcp/registerCapabilities.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781273386958,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/agent/mcp/route.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781273408924,
+      "type": "file"
+    },
+    {
+      "path": "src/core/voice/McpToolBridge.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781273477358,
+      "type": "file"
+    },
+    {
+      "path": "src/components/voice/VoiceTranscript.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1781273560706,
+      "type": "file"
+    },
+    {
+      "path": "src/core/voice/persona.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781277412895,
+      "type": "file"
+    },
+    {
+      "path": "src/core/voice/liveAudio.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781277461328,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/agent/voice-token/route.ts",
+      "accessCount": 1,
+      "lastAccessed": 1781277565288,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

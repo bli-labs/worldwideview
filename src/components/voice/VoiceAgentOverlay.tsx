@@ -6,13 +6,14 @@
  * entities, geocode, fly the camera, manage filters and favorites, and
  * call any per-session plugin tools — all by voice.
  *
- * Hidden on demo edition (the MCP surface is demo-blocked server-side too).
+ * The orb renders only when the server reports the voice backend is
+ * configured (GEMINI_API_KEY present) — and never on demo edition.
  */
 
 "use client";
 
-import { useState } from "react";
-import { useVoiceAgent, isVoiceAgentConfigured } from "@/core/voice/useVoiceAgent";
+import { useEffect, useState } from "react";
+import { useVoiceAgent } from "@/core/voice/useVoiceAgent";
 import { isDemo } from "@/core/edition";
 import { VoiceButton } from "./VoiceButton";
 import { VoiceTranscript } from "./VoiceTranscript";
@@ -20,10 +21,25 @@ import { VoiceTranscript } from "./VoiceTranscript";
 export function VoiceAgentOverlay() {
     const { state, transcript, start, stop } = useVoiceAgent();
     const [transcriptOpen, setTranscriptOpen] = useState(false);
+    const [configured, setConfigured] = useState(false);
 
-    // Render nothing until a SpatialCore agent is provisioned
-    // (scripts/setup-voice-agent.mjs) — and never on demo edition.
-    if (isDemo || !isVoiceAgentConfigured) return null;
+    useEffect(() => {
+        if (isDemo) return;
+        let cancelled = false;
+        fetch("/api/agent/voice-token")
+            .then((res) => (res.ok ? res.json() : { configured: false }))
+            .then((data) => {
+                if (!cancelled) setConfigured(Boolean(data.configured));
+            })
+            .catch(() => {
+                if (!cancelled) setConfigured(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    if (isDemo || !configured) return null;
 
     const handleStart = () => {
         setTranscriptOpen(true);

@@ -2,24 +2,15 @@
  * useVoiceAgent — React orchestration for the in-app voice agent.
  *
  * Lifecycle per session: discover the WWV MCP tool surface via the bridge,
- * start an ElevenLabs conversation with those tools registered as client
- * tools, and route every tool call back through MCP. Transcript entries
- * (user/agent speech and tool activity) accumulate for the transcript panel.
+ * open a Gemini Live session with those tools registered as function
+ * declarations, and route every tool call back through MCP. Transcript
+ * entries (user/agent speech and tool activity) accumulate for the panel.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { McpToolBridge } from "./McpToolBridge";
 import { VoiceAgentHandler } from "./VoiceAgentHandler";
 import type { VoiceState, VoiceTranscriptEntry } from "./types";
-
-// The SpatialCore ElevenLabs agent id. Provision the agent (persona + the
-// live MCP tool surface) with `node scripts/setup-voice-agent.mjs`, then set
-// NEXT_PUBLIC_ELEVENLABS_AGENT_ID. No fallback on purpose: connecting to an
-// unrelated agent is worse than showing no orb at all.
-const AGENT_ID = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID || "";
-
-/** True when a SpatialCore agent is configured for this deployment. */
-export const isVoiceAgentConfigured = AGENT_ID.length > 0;
 
 let entryCounter = 0;
 function nextEntryId(): string {
@@ -50,19 +41,18 @@ export function useVoiceAgent() {
             const bridge = bridgeRef.current ?? new McpToolBridge();
             bridgeRef.current = bridge;
 
-            // Discover the live MCP tool surface; the agent's client tools
-            // mirror it exactly (including per-session plugin tools).
+            // Discover the live MCP tool surface; the Live session's function
+            // declarations mirror it exactly (including per-session plugin tools).
             const tools = await bridge.listTools();
             if (process.env.NODE_ENV !== "production") {
                 console.log(
-                    `[VoiceAgent] Registering ${tools.length} MCP tools as client tools:`,
+                    `[VoiceAgent] Registering ${tools.length} MCP tools:`,
                     tools.map((tool) => tool.name),
                 );
             }
 
             const handler = new VoiceAgentHandler({
-                agentId: AGENT_ID,
-                toolNames: tools.map((tool) => tool.name),
+                tools,
                 onToolCall: async (name, args) => {
                     addEntry({ role: "tool", toolName: name, text: `→ ${name}` });
                     const result = await bridge.callTool(name, args);
