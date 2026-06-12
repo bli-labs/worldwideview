@@ -1,5 +1,5 @@
 /**
- * VoiceButton — the "Ask SpatialCore" mercury orb (ported from DAVE).
+ * VoiceButton — the "Ask SpatialCore" mercury orb.
  *
  * An always-morphing liquid shell around a glass core; the JS-driven
  * border-radius lerp takes over while a session is active.
@@ -121,7 +121,7 @@ export function VoiceButton({ state, onClick, onDisconnect }: VoiceButtonProps) 
                     <div className="voice-lava-a" />
                     <div className="voice-lava-b" />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/logo/spatialcore-white.svg" alt="SpatialCore" className="voice-sc-icon" />
+                    <img src="/logo/logo-icon.svg" alt="SpatialCore" className="voice-sc-icon" />
                 </button>
             </div>
             <div className={readoutClass}>

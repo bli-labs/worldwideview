@@ -1,5 +1,5 @@
 /**
- * Shared types for the in-app voice agent (ported from the DAVE prototype).
+ * Shared types for the in-app SpatialCore voice agent.
  */
 
 export type VoiceState =

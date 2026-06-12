@@ -1,9 +1,9 @@
 # Voice Agent ("Ask SpatialCore")
 
-The in-app voice agent (ported from the DAVE prototype) lets a signed-in user
-control and interrogate the globe by voice. It is an ElevenLabs Conversational
-AI session whose **client tools are the live WWV MCP surface** — the agent has
-exact parity with external MCP clients, automatically including future tools.
+The in-app voice agent lets a signed-in user control and interrogate the globe
+by voice. It is an ElevenLabs Conversational AI session whose **tools are the
+live WWV MCP surface** — the agent has exact parity with external MCP clients,
+automatically including future tools.
 
 ## Architecture
 
@@ -24,40 +24,47 @@ VoiceButton (mercury orb, bottom-center)
   browser tab already polls — so the globe reacts live.
 - Demo edition: the overlay does not render, and the server route is blocked.
 
-## Configuration
+## Provisioning the SpatialCore agent
 
-| What | Where |
-|---|---|
-| Agent ID | `NEXT_PUBLIC_ELEVENLABS_AGENT_ID` (falls back to the DAVE prototype agent) |
-| Persona / system prompt / voice | ElevenLabs dashboard (overrides are intentionally never sent — unauthorized overrides close the socket with code 1000) |
-| Tool declarations | ElevenLabs dashboard → Agent → Tools (must be **Client tools** whose names match the MCP tool names) |
+The agent (persona, knowledge, and tool declarations) is provisioned
+programmatically from the live MCP surface — no manual dashboard work:
 
-## Registering the tools on the ElevenLabs dashboard
+```bash
+# App running locally; WWV API key minted under the in-app "API Keys" button.
+ELEVENLABS_API_KEY=xi-... WWV_API_KEY=wwv-... node scripts/setup-voice-agent.mjs
+```
 
-The agent can only call tools that are declared on its dashboard config. Add a
-**client tool** per MCP tool you want voice-accessible. The canonical list and
-schemas come from the MCP surface itself — in dev, connect once and the console
-logs `[VoiceAgent] Registering N MCP tools as client tools: [...]`, or call
-`tools/list` against `/api/mcp` with an API key.
+The script discovers `tools/list` from the MCP endpoint, registers every tool
+as an ElevenLabs **client tool** (`expects_response: true`), writes the
+SpatialCore operator system prompt + first message, and prints the agent id.
+Set it and restart:
 
-Core tools worth declaring:
+```
+NEXT_PUBLIC_ELEVENLABS_AGENT_ID=<printed id>   # .env.local
+```
 
-| Tool | Purpose |
-|---|---|
-| `list_available_plugins` | What data is streaming right now |
-| `search_entities` | Find entities by name across active plugins |
-| `get_entities_in_region` | Entities inside a lat/lng bounding box |
-| `get_entity_details` | Full details for one entity |
-| `get_plugin_data` | Snapshot of one plugin's entities |
-| `geocode_location` | Place name → coordinates/bbox |
-| `fly_to` | Fly the live globe camera |
-| `get_plugin_filters` / `set_filter` / `clear_filter` | Live layer filtering |
-| `save_favorite` / `list_favorites` / `remove_favorite` | Bookmarks |
+The orb does not render until this is set — there is intentionally no
+fallback agent. Re-run the script with `ELEVENLABS_AGENT_ID=<id>` to update
+the same agent after the MCP tool surface changes. Voice and model can be
+tweaked afterwards on the ElevenLabs dashboard (session overrides are
+intentionally never sent — unauthorized overrides close the socket with
+code 1000).
 
-Give each dashboard tool the same JSON parameter schema the MCP tool declares,
-and instruct the agent (system prompt) that it is SpatialCore's operator:
-verify data with the query tools, move the camera with `fly_to`, and narrate
-insight from tool results rather than guessing.
+### Production option: server-side MCP
+
+For a deployed instance, ElevenLabs can call the MCP server directly in
+their cloud instead of through browser client tools:
+
+```bash
+ELEVENLABS_API_KEY=... WWV_API_KEY=... \
+WWV_PUBLIC_MCP_URL=https://<deployed-host>/api/mcp \
+node scripts/setup-voice-agent.mjs
+```
+
+This registers the URL as an ElevenLabs MCP server (`STREAMABLE_HTTP`,
+authorized via the WWV API key in a request header) and attaches it through
+`mcp_server_ids` — no client tools needed. Use the client-tools mode for
+local dev, since ElevenLabs' cloud cannot reach localhost.
 
 ## Files
 

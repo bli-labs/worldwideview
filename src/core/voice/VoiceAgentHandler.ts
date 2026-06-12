@@ -1,10 +1,9 @@
 /**
  * VoiceAgentHandler — wraps the @elevenlabs/client Conversation SDK.
  *
- * Ported from the DAVE prototype's ElevenLabsHandler. The SDK manages audio
- * I/O internally (microphone acquisition, playback, VAD) — no manual PCM or
- * WebSocket handling needed. Tool calls route through a single onToolCall
- * handler; WWV wires that to the MCP bridge.
+ * The SDK manages audio I/O internally (microphone acquisition, playback,
+ * VAD) — no manual PCM or WebSocket handling needed. Tool calls route
+ * through a single onToolCall handler; WWV wires that to the MCP bridge.
  *
  * NOTE: prompt and voice are configured on the ElevenLabs agent dashboard.
  * Overrides are intentionally NOT sent — unauthorized overrides make the

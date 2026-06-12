@@ -12,7 +12,7 @@
 "use client";
 
 import { useState } from "react";
-import { useVoiceAgent } from "@/core/voice/useVoiceAgent";
+import { useVoiceAgent, isVoiceAgentConfigured } from "@/core/voice/useVoiceAgent";
 import { isDemo } from "@/core/edition";
 import { VoiceButton } from "./VoiceButton";
 import { VoiceTranscript } from "./VoiceTranscript";
@@ -21,7 +21,9 @@ export function VoiceAgentOverlay() {
     const { state, transcript, start, stop } = useVoiceAgent();
     const [transcriptOpen, setTranscriptOpen] = useState(false);
 
-    if (isDemo) return null;
+    // Render nothing until a SpatialCore agent is provisioned
+    // (scripts/setup-voice-agent.mjs) — and never on demo edition.
+    if (isDemo || !isVoiceAgentConfigured) return null;
 
     const handleStart = () => {
         setTranscriptOpen(true);

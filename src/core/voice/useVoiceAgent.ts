@@ -12,12 +12,14 @@ import { McpToolBridge } from "./McpToolBridge";
 import { VoiceAgentHandler } from "./VoiceAgentHandler";
 import type { VoiceState, VoiceTranscriptEntry } from "./types";
 
-// Public ElevenLabs agent id; configure per deployment. Prompt, voice, and
-// the tool DECLARATIONS live on the ElevenLabs dashboard — the dashboard
-// tool names must match the MCP tool names (see docs/voice-agent.md).
-const AGENT_ID =
-    process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID ||
-    "agent_6701kgssz7j3edesksbg77rp1tfn";
+// The SpatialCore ElevenLabs agent id. Provision the agent (persona + the
+// live MCP tool surface) with `node scripts/setup-voice-agent.mjs`, then set
+// NEXT_PUBLIC_ELEVENLABS_AGENT_ID. No fallback on purpose: connecting to an
+// unrelated agent is worse than showing no orb at all.
+const AGENT_ID = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID || "";
+
+/** True when a SpatialCore agent is configured for this deployment. */
+export const isVoiceAgentConfigured = AGENT_ID.length > 0;
 
 let entryCounter = 0;
 function nextEntryId(): string {
