@@ -29,7 +29,8 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { isDemo } from "@/core/edition";
 import { authenticateApiKey } from "@/lib/apiKeyAuth";
-import { createMcpServer, registerOrientationPrompts } from "@/lib/mcp/server";
+import { createMcpServer } from "@/lib/mcp/server";
+import { registerCapabilities } from "@/lib/mcp/registerCapabilities";
 import { mcpLimiter, getClientIp } from "@/lib/rateLimiters";
 import { redisSlidingWindow } from "@/lib/geocodingRateLimit";
 import {
@@ -38,15 +39,6 @@ import {
     rateLimitedResponse,
     internalErrorResponse,
 } from "@/lib/mcp/mcpResponseHelpers";
-import { registerGlobeResources } from "./globeResources";
-import { registerDataQueryTools } from "@/lib/mcp/tools";
-import { registerGlobeCommandTools } from "./globeCommandTools";
-import { resolveActiveSessionId } from "@/lib/globeCommandQueue";
-import { registerPluginToolDispatch } from "./pluginToolDispatch";
-import { registerGeocodingTools } from "./geocodingTools";
-import { registerFavoritesTools } from "./favoritesTools";
-import { registerFilterTools } from "./filterTools";
-import { registerDiscoveryTools } from "./discoveryTools";
 
 // ---------------------------------------------------------------------------
 // Route segment config (TRANS-03)
@@ -82,35 +74,6 @@ function withStreamingHeaders(sdkResponse: Response): Response {
         statusText: sdkResponse.statusText,
         headers,
     });
-}
-
-// ---------------------------------------------------------------------------
-// Phase 21 Wave 3: plugin tool dispatch registrar
-// ---------------------------------------------------------------------------
-
-/**
- * Reads the per-session catalog for the authenticated user and registers a
- * relay handler for each namespaced plugin tool. The handler validates input,
- * enqueues the invocation for the browser, and waits for the browser result
- * (blpop with a 10-second deadline). Returns a graceful timeout if no result.
- *
- * Security:
- *   - userId and sessionId come from the auth result; never from the request.
- *   - Catalog is scoped to the most-recently-active session for this user.
- *   - No DB/tenantId enumeration -- catalog is browser-published only.
- *   - Server stays plugin-agnostic: no streamUrl / data-engine access.
- */
-type McpServer = import("@modelcontextprotocol/sdk/server/mcp.js").McpServer;
-
-async function registerPluginTools(
-    server: McpServer,
-    userId: string,
-): Promise<void> {
-    // Resolve the active session for this user (ZSET globe:sessions)
-    const sessionId = await resolveActiveSessionId(userId);
-
-    // Delegate to the dispatch registrar (pluginToolDispatch.ts).
-    await registerPluginToolDispatch(server, { userId, sessionId });
 }
 
 // ---------------------------------------------------------------------------
@@ -170,30 +133,15 @@ async function handleMcpRequest(request: Request): Promise<Response> {
     // Phase 21: dynamic per-session plugin tools (below)
     //   Phase 22: registerGeocodingTools, registerFavoritesTools
     //   Phase 23: registerFilterTools (set_filter, clear_filter, get_plugin_filters)
-    registerGlobeResources(server, { userId: authResult.userId });
-    registerDataQueryTools(server, { userId: authResult.userId });
-    registerGlobeCommandTools(server, { userId: authResult.userId });
-    registerGeocodingTools(server, { userId: authResult.userId });
-    registerFavoritesTools(server, { userId: authResult.userId });
-    registerFilterTools(server, { userId: authResult.userId });
-    // Phase 29: discovery tools (list_available_plugins, get_globe_context, investigate_area)
-    registerDiscoveryTools(server, { userId: authResult.userId });
-    // Phase 26: orientation prompts (INST-03, INST-04)
-    await registerOrientationPrompts(server, { userId: authResult.userId });
-
-    // Phase 21: dynamic plugin tools — read the per-session catalog and
-    // register each plugin tool so tools/list includes them.
-    // NO DB/tenantId enumeration: discovery is browser-published only.
+    // Shared with /api/agent/mcp (the voice agent's session-authed twin):
+    // resources, data query, globe commands, geocoding, favorites, filters,
+    // discovery, orientation prompts, and dynamic per-session plugin tools.
     //
-    // list_changed note (best-effort, D-21-01):
-    // This server is stateless and per-request, so it cannot push
-    // list_changed notifications to connected clients. The catalog snapshot
-    // is whatever the browser published at the moment this request arrives.
-    // Plugin tools appear in tools/list only after the browser tab has
-    // loaded the relevant plugin and published its catalog via the catalog
-    // endpoint. Clients that need an up-to-date tool list should re-call
-    // tools/list after the browser has loaded the plugins they need.
-    await registerPluginTools(server, authResult.userId);
+    // list_changed note (best-effort, D-21-01): this server is stateless and
+    // per-request, so plugin tools appear in tools/list only after the
+    // browser tab has published its catalog; clients should re-call
+    // tools/list after the relevant plugins load.
+    await registerCapabilities(server, authResult.userId);
 
     const transport = new WebStandardStreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // stateless mode (D-17-04)

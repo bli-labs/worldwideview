@@ -22,6 +22,7 @@ import { useStore } from "@/core/state/store";
 import { dataBus } from "@/core/data/DataBus";
 import { PanelToggleArrows } from "@/components/layout/PanelToggleArrows";
 import { FloatingVideoManager } from "@/components/video/FloatingVideoManager";
+import { VoiceAgentOverlay } from "@/components/voice/VoiceAgentOverlay";
 import { BootOverlay } from "@/components/common/BootOverlay";
 
 import { useBootSequence } from "@/core/hooks/useBootSequence";
@@ -194,6 +195,7 @@ export function AppShell() {
         <EntityInfoCard />
         <BottomPanelManager />
         <FloatingVideoManager />
+        <VoiceAgentOverlay />
         {needsReload && <ReloadToast />}
         <ErrorToast />
         <FeedbackDialog />

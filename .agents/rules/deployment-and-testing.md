@@ -66,7 +66,7 @@ Configured in `next.config.ts` `headers()`:
 - **X-Frame-Options**: DENY
 - **X-Content-Type-Options**: nosniff
 - **Referrer-Policy**: strict-origin-when-cross-origin
-- **Permissions-Policy**: camera/microphone disabled, geolocation self-only
+- **Permissions-Policy**: camera disabled, microphone self-only (required by the voice agent), geolocation self-only
 
 
 

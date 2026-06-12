@@ -47,8 +47,10 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-DNS-Prefetch-Control", value: "on" },
           {
+            // microphone=(self): required by the in-app voice agent
+            // (ElevenLabs Conversation SDK acquires the mic same-origin).
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(self)",
+            value: "camera=(), microphone=(self), geolocation=(self)",
           },
         ],
       },
