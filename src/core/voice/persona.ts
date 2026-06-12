@@ -22,4 +22,4 @@ You are a calm, sharp operations specialist. Keep spoken answers short — lead 
 
 export const SPATIALCORE_VOICE = "Charon";
 
-export const SPATIALCORE_LIVE_MODEL = "gemini-live-2.5-flash-preview";
+export const SPATIALCORE_LIVE_MODEL = "gemini-3.1-flash-live-preview";
